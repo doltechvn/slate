@@ -1,8 +1,12 @@
 {
-  "name": "slate",
+  "name": "@doltech/slate",
   "description": "A completely customizable framework for building rich text editors.",
   "version": "0.56.0",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://verdaccio.tech.dolenglish.vn"
+  },
   "repository": "git://github.com/ianstormtaylor/slate.git",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
