@@ -1,7 +1,7 @@
 {
   "name": "@doltech/slate-history",
   "description": "An operation-based history implementation for Slate editors.",
-  "version": "0.56.0",
+  "version": "0.56.1",
   "license": "MIT",
   "publishConfig": {
     "access": "public",
