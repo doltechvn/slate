@@ -1,168 +1,70 @@
 import assert from 'assert'
-import { fixtures } from 'slate-dev-test-utils'
-import { Node, Editor, Value } from 'slate'
-
-const plugins = [
-  {
-    schema: {
-      blocks: {
-        image: {
-          isVoid: true,
-        },
-      },
-      inlines: {
-        emoji: {
-          isVoid: true,
-        },
-      },
-      marks: {
-        result: {
-          isAtomic: true,
-        },
-      },
-    },
-  },
-]
+import { fixtures } from '../../../support/fixtures'
+import { Editor } from 'slate'
+import { createHyperscript } from 'slate-hyperscript'
 
 describe('slate', () => {
-  fixtures(__dirname, 'models/leaf', ({ module }) => {
-    const { input, output } = module
-    const fn = module.default
-    const actual = fn(input).toJSON()
-    const expected = output.toJSON()
-    assert.deepEqual(actual, expected)
-  })
-
-  fixtures(__dirname, 'models/operation', ({ module }) => {
-    const { input, output } = module
-    const fn = module.default
-    const actual = fn(input).toJSON()
-    const expected = output
-    assert.deepEqual(actual, expected)
-  })
-
-  fixtures(__dirname, 'models/point', ({ module }) => {
-    const { input, output } = module
-    const fn = module.default
-    const actual = fn(input)
-    const expected = output
-    assert.equal(actual, expected)
-  })
-
-  // fixtures(__dirname, 'models/text', ({ module }) => {
-  //   const { input, output } = module
-  //   const fn = module.default
-  //   const actual = fn(input).toJSON()
-  //   const expected = output.toJSON()
-  //   assert.deepEqual(actual, expected)
-  // })
-
-  fixtures(__dirname, 'models/node', ({ module }) => {
-    const { input, output } = module
-    const fn = module.default
-    let actual = fn(input)
-    let expected = output
-
-    if (Node.isNode(actual)) {
-      actual = actual.toJSON()
-    }
-
-    if (Node.isNode(expected)) {
-      expected = expected.toJSON()
-    }
-
-    assert.deepEqual(actual, expected)
-  })
-
-  fixtures(__dirname, 'serializers/raw/deserialize', ({ module }) => {
-    const { input, output, options } = module
-    const actual = Value.fromJSON(input, options).toJSON()
-    const expected = output.toJSON()
-    assert.deepEqual(actual, expected)
-  })
-
-  fixtures(__dirname, 'serializers/raw/serialize', ({ module }) => {
-    const { input, output, options } = module
-    const actual = input.toJSON(options)
-    const expected = output
-    assert.deepEqual(actual, expected)
+  fixtures(__dirname, 'interfaces', ({ module }) => {
+    const { input, test, output } = module
+    const result = test(input)
+    assert.deepEqual(result, output)
   })
 
   fixtures(__dirname, 'operations', ({ module }) => {
-    const { input, output } = module
-    const operations = module.default
-    const editor = new Editor({ plugins })
+    const { input, operations, output } = module
+    const editor = withTest(input)
 
-    const opts = {
-      preserveSelection: true,
-      preserveDecorations: true,
-    }
-
-    editor.setValue(input)
-    operations.forEach(op => editor.applyOperation(op))
-
-    const actual = editor.value.toJSON(opts)
-
-    editor.setValue(output)
-    const expected = editor.value.toJSON(opts)
-    assert.deepEqual(actual, expected)
-  })
-
-  // The hyperscript editor has the schema, but the test
-  // editor doesn't! It needs to live in the tests instead.
-
-  fixtures(__dirname, 'commands', ({ module }) => {
-    const { input, output, options = {}, plugins: module_plugins } = module
-    const fn = module.default
-    const editor = new Editor({
-      plugins: module_plugins ? plugins.concat(module_plugins) : plugins,
+    Editor.withoutNormalizing(editor, () => {
+      for (const op of operations) {
+        editor.apply(op)
+      }
     })
-    const opts = { preserveSelection: true, ...options }
 
-    editor.setValue(input)
-    fn(editor)
-    const actual = editor.value.toJSON(opts)
-
-    editor.setValue(output)
-    const expected = editor.value.toJSON(opts)
-    assert.deepEqual(actual, expected)
+    assert.deepEqual(editor.children, output.children)
+    assert.deepEqual(editor.selection, output.selection)
   })
 
-  fixtures(__dirname, 'controllers', ({ module }) => {
-    const { input, output, default: fn } = module
-
-    const actual = fn(input)
-    const expected = output
-
-    assert.equal(actual, expected)
-  })
-
-  fixtures(__dirname, 'schema', ({ module }) => {
-    const { input, output, schema } = module
-    const editor = new Editor({ value: input, plugins: [{ schema }] })
-    const actual = editor.value.toJSON()
-    const expected = output.toJSON()
-    assert.deepEqual(actual, expected)
-  })
-
-  fixtures(__dirname, 'history', ({ module }) => {
+  fixtures(__dirname, 'normalization', ({ module }) => {
     const { input, output } = module
-    const fn = module.default
-    const editor = new Editor({ plugins })
-    const opts = { preserveSelection: true }
-
-    editor.setValue(input)
-    fn(editor)
-    const actual = editor.value.toJSON(opts)
-
-    editor.setValue(output)
-    const expected = output.toJSON(opts)
-
-    assert.deepEqual(actual, expected)
+    const editor = withTest(input)
+    Editor.normalize(editor, { force: true })
+    assert.deepEqual(editor.children, output.children)
+    assert.deepEqual(editor.selection, output.selection)
   })
 
-  fixtures(__dirname, 'utils/path-utils', ({ module }) => {
-    const fn = module.default
-    fn()
+  fixtures(__dirname, 'queries', ({ module }) => {
+    const { input, run, output } = module
+    const editor = withTest(input)
+    const result = run(editor)
+    assert.deepEqual(result, output)
   })
+
+  fixtures(__dirname, 'transforms', ({ module }) => {
+    const { input, run, output } = module
+    const editor = withTest(input)
+    run(editor)
+    assert.deepEqual(editor.children, output.children)
+    assert.deepEqual(editor.selection, output.selection)
+  })
+})
+
+const withTest = editor => {
+  const { isInline, isVoid } = editor
+
+  editor.isInline = element => {
+    return element.inline === true ? true : isInline(element)
+  }
+
+  editor.isVoid = element => {
+    return element.void === true ? true : isVoid(element)
+  }
+
+  return editor
+}
+
+export const jsx = createHyperscript({
+  elements: {
+    block: {},
+    inline: { inline: true },
+  },
 })

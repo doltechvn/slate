@@ -1,15 +1,15 @@
-/** @jsx h */
+/** @jsx jsx */
 
-import h from 'slate-hyperscript'
+import { jsx } from 'slate-hyperscript'
 
 export const input = (
-  <text>
-    <text>word</text>
+  <text b>
+    <text a>word</text>
   </text>
 )
 
 export const output = {
-  object: 'text',
   text: 'word',
-  marks: [],
+  a: true,
+  b: true,
 }
